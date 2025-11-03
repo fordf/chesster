@@ -1,4 +1,4 @@
-import 'package:chesster/chessboard.dart';
+import 'package:chesster/widgets/chessboard.dart';
 import 'package:flutter/material.dart';
 
 void main() async {
