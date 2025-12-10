@@ -45,5 +45,6 @@ app.*.map.json
 *
 /*
 !**/lib/*
+!**/lib/**/
 !pubspec.yaml
 !README.md
