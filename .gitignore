@@ -44,7 +44,6 @@ app.*.map.json
 
 *
 /*
-!**/lib/*
-!**/lib/**/
-!pubspec.yaml
-!README.md
+!lib
+!**/lib/**
+/lib/firebase_options.dart
