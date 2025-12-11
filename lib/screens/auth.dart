@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:chesster/models/player.dart';
+import 'package:chesster/screens/home.dart';
 import 'package:chesster/widgets/container_form_field.dart';
 import 'package:chesster/widgets/image_field.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -43,34 +44,50 @@ class _AuthScreenState extends State<AuthScreen> {
         _isAuthenticating = true;
       });
       if (_isSignup) {
-        final usernameDoc = _firestore.collection('usernames').doc(_username);
-
-        if ((await usernameDoc.get()).exists) {
-          setState(() {
-            _usernameErrorMessage = 'Username taken!';
-          });
-          return;
-        }
         final userCreds = await _firebaseAuth.createUserWithEmailAndPassword(
           email: _email,
           password: _password,
         );
-        final storageRef = FirebaseStorage.instance
-            .ref()
-            .child('user_images')
-            .child('${userCreds.user!.uid}.jpg');
-        await storageRef.putFile(_image!);
-        final imageUrl = await storageRef.getDownloadURL();
+
+        final String uid = userCreds.user!.uid;
+        String? imageUrl;
+        if (_image != null) {
+          final storageRef = FirebaseStorage.instance
+              .ref()
+              .child('user_images')
+              .child('$uid.jpg');
+          await storageRef.putFile(_image!);
+          imageUrl = await storageRef.getDownloadURL();
+        }
         final newPlayer = Player(
           username: _username,
           email: _email,
           imageUrl: imageUrl,
-        );
+        ).toJson;
+        final userDocRef = _firestore.collection('users').doc(uid);
+        final usernameDocRef =
+            _firestore.collection('usernames').doc(_username);
         final batch = _firestore.batch();
-        final userDoc = _firestore.collection('users').doc(userCreds.user!.uid);
-        batch.set(usernameDoc, {'uid': userCreds.user!.uid});
-        batch.set(userDoc, newPlayer.toJson);
+        batch.set(usernameDocRef, {'uid': uid});
+        batch.set(userDocRef, newPlayer);
         await batch.commit();
+        // try {
+        //   final Map<String, dynamic> transactionRes =
+        //       await _firestore.runTransaction(
+        //     (transaction) async {
+        //       final usernameDoc = await transaction.get(usernameDocRef);
+        //       if (usernameDoc.exists) {
+        //         return {'error': 'Username taken'};
+        //       } else {
+        //         await transaction.set(usernameDocRef, {'uid': uid});
+        //         await transaction.set(userDocRef, newPlayer);
+        //         return {'success': 'user created'};
+        //       }
+        //     },
+        //   );
+        // } catch (e) {
+        //   print(e);
+        // }
       } else {
         await _firebaseAuth.signInWithEmailAndPassword(
           email: _email,
@@ -111,9 +128,9 @@ class _AuthScreenState extends State<AuthScreen> {
                           if (_isSignup) ...[
                             ContainerFormField<ImageInput, File>(
                               errorColor: Theme.of(context).colorScheme.error,
-                              validator: (imageFile) => imageFile == null
-                                  ? 'Profile picture required'
-                                  : null,
+                              // validator: (imageFile) => imageFile == null
+                              //     ? 'Profile picture required'
+                              //     : null,
                               onSaved: (File? imageFile) {
                                 _image = imageFile;
                               },
@@ -125,6 +142,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 errorText: _usernameErrorMessage,
                               ),
                               enableSuggestions: false,
+                              autocorrect: false,
                               autovalidateMode: _attemptedSubmit
                                   ? AutovalidateMode.onUserInteraction
                                   : AutovalidateMode.onUnfocus,
@@ -150,7 +168,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             enableSuggestions: false,
                             autovalidateMode: _attemptedSubmit
                                 ? AutovalidateMode.onUserInteraction
-                                : AutovalidateMode.onUnfocus,
+                                : AutovalidateMode.disabled,
                             textCapitalization: TextCapitalization.none,
                             validator: (value) {
                               if (value == null ||

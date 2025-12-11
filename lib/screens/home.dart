@@ -10,31 +10,40 @@ final db = FirebaseFirestore.instance;
 class ChessHome extends StatelessWidget {
   const ChessHome({super.key});
 
-  Future<QuerySnapshot<Map<String, Object?>>> getActiveGames() async {
+  Future<DocumentSnapshot<Map<String, Object?>>> getUserDoc() async {
     final user = FirebaseAuth.instance.currentUser!;
-    final userdoc = await queryCache(db.collection('users').doc(user.uid));
-    final userdata = userdoc.data();
-    if (userdata == null) throw ();
+    return db.collection('users').doc(user.uid).get();
+    // return queryCache(db.collection('users').doc(user.uid));
+  }
+
+  Future<List<QueryDocumentSnapshot<Map<String, Object?>>>> getActiveGames(
+      DocumentSnapshot<Map<String, dynamic>> userdoc) async {
+    final userdata = userdoc.data()!;
     final List<String> activeGameIds = List<String>.from(userdata['games']!);
-    final activeGames = db
+    if (activeGameIds.isEmpty) return [];
+    final activeGames = await db
         .collection('games')
         .where(
-          'id',
+          FieldPath.documentId,
           whereIn: activeGameIds,
         )
         .get();
-    return activeGames;
+    return activeGames.docs;
   }
 
-  Future<QuerySnapshot<Map<String, Object?>>> getOpenGames() async {
-    return db
+  Future<List<QueryDocumentSnapshot<Map<String, Object?>>>> getOpenGames(
+      DocumentSnapshot<Map<String, dynamic>> userdoc) async {
+    final userdata = userdoc.data()!;
+    final username = userdata['username'] as String;
+    final openGames = await db
         .collection('games')
         .where('opponent', isNull: true)
         .where(
           'creator',
-          isNotEqualTo: FirebaseAuth.instance.currentUser!.displayName,
+          isNotEqualTo: username,
         )
         .get();
+    return openGames.docs;
   }
 
   @override
@@ -63,27 +72,37 @@ class ChessHome extends StatelessWidget {
             icon: const Icon(Icons.logout),
           ),
         ),
-        body: Column(
-          mainAxisSize: MainAxisSize.max,
-          children: [
-            Flexible(
-              child: Card(
-                child: GamesList(
-                  futureGetter: getActiveGames,
-                  noGamesMessage: 'No active games! Make one!',
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            Flexible(
-              child: Card(
-                child: GamesList(
-                  futureGetter: getOpenGames,
-                  noGamesMessage: 'No available games :(',
-                ),
-              ),
-            ),
-          ],
-        ));
+        body: FutureBuilder(
+            future: getUserDoc(),
+            builder: (context, snapshot) {
+              switch (snapshot.connectionState) {
+                case ConnectionState.active:
+                case ConnectionState.none:
+                case ConnectionState.waiting:
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                case ConnectionState.done:
+                  return SizedBox(
+                    width: double.infinity,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        GamesList(
+                          futureGetter: () async =>
+                              getActiveGames(snapshot.requireData),
+                          noGamesMessage: 'No active games! Make one!',
+                        ),
+                        const SizedBox(height: 18),
+                        GamesList(
+                          futureGetter: () async =>
+                              getOpenGames(snapshot.requireData),
+                          noGamesMessage: 'No available games :(',
+                        ),
+                      ],
+                    ),
+                  );
+              }
+            }));
   }
 }

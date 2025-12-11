@@ -4,7 +4,7 @@ class Player {
   String username;
   final List<String> games;
   final List<String> invites;
-  final String imageUrl;
+  String? imageUrl;
   final String email;
 
   Player({
@@ -12,7 +12,7 @@ class Player {
     this.gamesWon = 0,
     required this.username,
     required this.email,
-    required this.imageUrl,
+    this.imageUrl,
   })  : games = <String>[],
         invites = <String>[];
 
@@ -20,7 +20,7 @@ class Player {
       : gamesPlayed = json['gamesPlayed']! as int,
         gamesWon = json['gamesWon']! as int,
         username = json['username']! as String,
-        imageUrl = json['imageUrl']! as String,
+        imageUrl = json['imageUrl'] as String?,
         email = json['email']! as String,
         games = json['games']! as List<String>,
         invites = json['invites']! as List<String>;
@@ -32,5 +32,6 @@ class Player {
         'games': games,
         'invites': invites,
         'email': email,
+        'imageUrl': imageUrl,
       };
 }
