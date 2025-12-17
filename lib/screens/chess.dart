@@ -62,7 +62,9 @@ class _ChessScreenState extends State<ChessScreen> {
                       return const Text('Something went wrong');
                     }
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Text("Loading");
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
                     }
                     final gameData = snapshot.requireData.data()!;
                     print(gameData);

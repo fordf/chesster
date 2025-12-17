@@ -13,10 +13,16 @@ class NewGameScreen extends StatelessWidget {
         .doc(FirebaseAuth.instance.currentUser!.uid);
     final userDoc = await queryCache(userDocRef);
     final username = userDoc.get('username') as String;
-    final newGameMap = ChessGame(username).toJson;
+    final newGame = ChessGame(username);
     final newGameRef = FirebaseFirestore.instance.collection('games').doc();
+    final piecesRef = newGameRef.collection('pieces');
     final batch = FirebaseFirestore.instance.batch();
-    batch.set(newGameRef, newGameMap);
+    batch.set(newGameRef, newGame.toJson);
+    for (final MapEntry(key: posIndex, value: chessPiece)
+        in newGame.indexesMap.entries) {
+      final pieceRef = piecesRef.doc('$posIndex');
+      batch.set(pieceRef, chessPiece.piece.toJson);
+    }
     batch.update(userDocRef, {
       'games': FieldValue.arrayUnion([newGameRef.id]),
     });

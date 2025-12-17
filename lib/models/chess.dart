@@ -30,8 +30,7 @@ class Piece {
         color = ChessColor.values[colorIndex],
         position = toPosition(positionIndex);
 
-  Map<String, Object?> get toJson =>
-      {'position': toIndex(position), 'rank': rank.index, 'color': color.index};
+  Map<String, Object?> get toJson => {'rank': rank.index, 'color': color.index};
 
   Rank rank;
   Position position;
@@ -76,9 +75,9 @@ class ChessGame {
         'creator': creator,
         'opponent': opponent,
         'creatorIsWhite': creatorIsWhite,
-        'pieces': <Map<String, Object?>>[
-          for (final chessPiece in indexesMap.values) chessPiece.piece.toJson
-        ],
+        // 'pieces': <Map<String, Object?>>[
+        //   for (final chessPiece in indexesMap.values) chessPiece.piece.toJson
+        // ],
       };
 
   void move(Piece piece, int endIndex) {

@@ -89,13 +89,13 @@ class ChessHome extends StatelessWidget {
                       mainAxisSize: MainAxisSize.max,
                       children: [
                         GamesList(
-                          futureGetter: () async =>
+                          futureGetter: () =>
                               getActiveGames(snapshot.requireData),
                           noGamesMessage: 'No active games! Make one!',
                         ),
                         const SizedBox(height: 18),
                         GamesList(
-                          futureGetter: () async =>
+                          futureGetter: () =>
                               getOpenGames(snapshot.requireData),
                           noGamesMessage: 'No available games :(',
                         ),
