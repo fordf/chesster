@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:chesster/models/player.dart';
-import 'package:chesster/screens/home.dart';
 import 'package:chesster/widgets/container_form_field.dart';
 import 'package:chesster/widgets/image_field.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -13,7 +12,12 @@ final _firebaseAuth = FirebaseAuth.instance;
 final _firestore = FirebaseFirestore.instance;
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  // final void Function(String) onSavedImageUrl;
+
+  const AuthScreen({
+    super.key,
+    // required this.onSavedImageUrl,
+  });
 
   @override
   State<StatefulWidget> createState() => _AuthScreenState();
@@ -32,7 +36,6 @@ class _AuthScreenState extends State<AuthScreen> {
 
   void onSubmit() async {
     if (!_formKey.currentState!.validate()) {
-      print('nononononon');
       return;
     }
     _formKey.currentState!.save();
@@ -68,9 +71,11 @@ class _AuthScreenState extends State<AuthScreen> {
         final usernameDocRef =
             _firestore.collection('usernames').doc(_username);
         final batch = _firestore.batch();
-        batch.set(usernameDocRef, {'uid': uid});
         batch.set(userDocRef, newPlayer);
-        await batch.commit();
+        batch.set(usernameDocRef, {'uid': uid});
+        try {
+          await batch.commit();
+        } on FirebaseException {}
         // try {
         //   final Map<String, dynamic> transactionRes =
         //       await _firestore.runTransaction(
@@ -144,7 +149,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               enableSuggestions: false,
                               autocorrect: false,
                               autovalidateMode: _attemptedSubmit
-                                  ? AutovalidateMode.onUserInteraction
+                                  ? AutovalidateMode.always
                                   : AutovalidateMode.onUnfocus,
                               validator: (value) {
                                 if (value == null ||
@@ -167,8 +172,8 @@ class _AuthScreenState extends State<AuthScreen> {
                             autocorrect: false,
                             enableSuggestions: false,
                             autovalidateMode: _attemptedSubmit
-                                ? AutovalidateMode.onUserInteraction
-                                : AutovalidateMode.disabled,
+                                ? AutovalidateMode.always
+                                : AutovalidateMode.onUnfocus,
                             textCapitalization: TextCapitalization.none,
                             validator: (value) {
                               if (value == null ||
@@ -188,7 +193,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             ),
                             obscureText: true,
                             autovalidateMode: _attemptedSubmit
-                                ? AutovalidateMode.onUserInteraction
+                                ? AutovalidateMode.always
                                 : AutovalidateMode.onUnfocus,
                             validator: (value) {
                               if (value == null || value.trim().length < 8) {

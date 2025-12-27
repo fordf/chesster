@@ -4,6 +4,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum ChessColor { black, white }
 
+enum ChoosingChoice {
+  black,
+  white,
+  coinflip,
+}
+
 enum Rank {
   king(startingColumns: [4]),
   queen(startingColumns: [3]),
@@ -43,9 +49,14 @@ class ChessGame {
   final List<Move> moves = [];
   final String creator;
   String? opponent;
+  ChoosingChoice? creatorChoice;
+  ChoosingChoice? opponentChoice;
   bool? creatorIsWhite;
   bool complete = false;
-  final Map<int, ChessPiece> indexesMap;
+  late final Map<int, ChessPiece> indexesMap;
+  int wantsBlack = 0;
+  int wantsWhite = 0;
+  int wantsCoinFlip = 0;
 
   ChessGame(this.creator)
       : indexesMap = <int, ChessPiece>{
@@ -57,27 +68,44 @@ class ChessGame {
       : creator = json['creator']! as String,
         complete = json['complete']! as bool,
         opponent = json['opponent'] as String?,
-        creatorIsWhite = json['creatorIsWhite'] as bool?,
-        indexesMap = <int, ChessPiece>{
-          for (final (piecemap as Map<String, Object?>)
-              in (json['pieces']! as List))
-            piecemap['position'] as int: ChessPiece(
-              piece: Piece.fromIndexes(
-                positionIndex: piecemap['position']! as int,
-                colorIndex: piecemap['color']! as int,
-                rankIndex: piecemap['rank']! as int,
-              ),
-            ),
-        };
+        wantsWhite = json['white'] as int,
+        wantsBlack = json['black'] as int,
+        wantsCoinFlip = json['coinflip'] as int,
+        creatorChoice = json['creatorChoice'] == null
+            ? null
+            : ChoosingChoice.values[json['creatorChoice'] as int],
+        opponentChoice = json['opponentChoice'] == null
+            ? null
+            : ChoosingChoice.values[json['opponentChoice'] as int],
+        creatorIsWhite = json['creatorIsWhite'] as bool?;
+
+  void setIndexesMap(Map<int, Map<String, dynamic>> json) {
+    indexesMap = {
+      for (final MapEntry(key: index, value: piecemap) in json.entries)
+        index: ChessPiece(
+          piece: Piece.fromIndexes(
+            positionIndex: index,
+            rankIndex: piecemap['rank']!,
+            colorIndex: piecemap['color']!,
+          ),
+        )
+    };
+  }
 
   Map<String, Object?> get toJson => {
         'complete': complete,
         'creator': creator,
         'opponent': opponent,
         'creatorIsWhite': creatorIsWhite,
-        // 'pieces': <Map<String, Object?>>[
-        //   for (final chessPiece in indexesMap.values) chessPiece.piece.toJson
-        // ],
+        'white': wantsWhite,
+        'black': wantsBlack,
+        'coinflip': wantsCoinFlip,
+        'creatorChoice': creatorChoice == null
+            ? null
+            : ChoosingChoice.values.indexOf(creatorChoice!),
+        'opponentChoice': opponentChoice == null
+            ? null
+            : ChoosingChoice.values.indexOf(opponentChoice!),
       };
 
   void move(Piece piece, int endIndex) {
@@ -97,10 +125,10 @@ class ChessGame {
     }
   }
 
-  // ChessColor get turn =>
-  //     moves.length % 2 == 0 ? ChessColor.white : ChessColor.black;
+  ChessColor get turn =>
+      moves.length % 2 == 0 ? ChessColor.white : ChessColor.black;
 
-  // List<Map> get serializedMoves => [for (final move in moves) move.serialize];
+  List<Map> get serializedMoves => [for (final move in moves) move.serialize];
 
   // List<Piece> get serializedPieces => [
   //   for (final piece in indexesMap.values)
@@ -108,8 +136,8 @@ class ChessGame {
   // ];
 
   bool canMove(Piece piece, int endIndex) {
-    final positionTaken = indexesMap.containsKey(endIndex);
-    if (positionTaken && indexesMap[endIndex]!.piece.color == piece.color) {
+    final positionTaken = indexesMap!.containsKey(endIndex);
+    if (positionTaken && indexesMap![endIndex]!.piece.color == piece.color) {
       return false;
     }
     final (x1, y1) = piece.position;

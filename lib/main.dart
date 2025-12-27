@@ -1,5 +1,6 @@
 import 'package:chesster/screens/auth.dart';
 import 'package:chesster/screens/home.dart';
+import 'package:chesster/theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -25,26 +26,27 @@ void main() async {
       print(e);
     }
   }
-  runApp(const Chesster());
+  runApp(Chesster());
 }
 
 class Chesster extends StatelessWidget {
-  const Chesster({super.key});
+  Chesster({super.key});
+
   @override
   Widget build(BuildContext context) {
-    final ColorScheme colorScheme = ColorScheme.fromSeed(
-      brightness: MediaQuery.platformBrightnessOf(context),
-      seedColor: Colors.indigo,
-    );
+    final brightness = MediaQuery.platformBrightnessOf(context);
     return MaterialApp(
       title: 'Chesster',
-      theme: ThemeData(
-        colorScheme: colorScheme,
-        floatingActionButtonTheme: FloatingActionButtonThemeData(
-          backgroundColor: colorScheme.tertiary,
-          foregroundColor: colorScheme.onTertiary,
-        ),
-      ),
+      // theme: ThemeData(
+      //   colorScheme: colorScheme,
+      //   floatingActionButtonTheme: FloatingActionButtonThemeData(
+      //     backgroundColor: colorScheme.tertiary,
+      //     foregroundColor: colorScheme.onTertiary,
+      //   ),
+      // ),
+      theme: brightness == Brightness.dark
+          ? MaterialTheme(TextTheme.of(context)).dark()
+          : MaterialTheme(TextTheme.of(context)).light(),
       home: StreamBuilder(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (ctx, snapshot) {
@@ -58,7 +60,9 @@ class Chesster extends StatelessWidget {
               ),
             );
           }
-          return const AuthScreen();
+          return const AuthScreen(
+              // onSavedImageUrl: saveImageUrl,
+              );
         },
       ),
     );
