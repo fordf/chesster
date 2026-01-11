@@ -16,7 +16,7 @@ class Move {
   Move.withPiece({required Piece piece, required this.endIndex})
       : rank = piece.rank,
         color = piece.color,
-        startIndex = toIndex(piece.position);
+        startIndex = piece.position;
 
   Move.fromMap(Map<String, dynamic> map)
       : rank = map['rank'],

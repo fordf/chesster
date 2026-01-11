@@ -18,10 +18,9 @@ class NewGameScreen extends StatelessWidget {
     final piecesRef = newGameRef.collection('pieces');
     final batch = FirebaseFirestore.instance.batch();
     batch.set(newGameRef, newGame.toJson);
-    for (final MapEntry(key: posIndex, value: chessPiece)
-        in newGame.indexesMap!.entries) {
-      final pieceRef = piecesRef.doc('$posIndex');
-      batch.set(pieceRef, chessPiece.piece.toJson);
+    for (final piece in startingPieces) {
+      final pieceRef = piecesRef.doc('${piece.position}');
+      batch.set(pieceRef, piece.toJson);
     }
     batch.update(userDocRef, {
       'games': FieldValue.arrayUnion([newGameRef.id]),

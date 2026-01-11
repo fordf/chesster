@@ -6,17 +6,24 @@ import 'package:flutter/material.dart';
 
 final _firestore = FirebaseFirestore.instance;
 
+const creatorCheck = Icon(
+  Icons.check,
+  color: Colors.green,
+);
+const opponentCheck = Icon(
+  Icons.check,
+  color: Colors.purpleAccent,
+);
+
 class ColorChooser extends StatelessWidget {
-  final int wantsBlack;
-  final int wantsWhite;
-  final int wantsCoinFlip;
+  final ChoosingChoice? creatorChoice;
+  final ChoosingChoice? opponentChoice;
   final Future<bool> Function(ChoosingChoice) onWantsChoosingChoice;
 
   const ColorChooser({
     super.key,
-    required this.wantsBlack,
-    required this.wantsWhite,
-    required this.wantsCoinFlip,
+    required this.creatorChoice,
+    required this.opponentChoice,
     required this.onWantsChoosingChoice,
   });
 
@@ -29,16 +36,10 @@ class ColorChooser extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ElevatedButton.icon(
-              icon: wantsWhite > 0
-                  ? Row(
-                      children: List.filled(
-                          wantsWhite,
-                          const Icon(
-                            Icons.check,
-                            color: Colors.green,
-                          )),
-                    )
-                  : null,
+              icon: Row(children: [
+                if (creatorChoice == ChoosingChoice.white) creatorCheck,
+                if (opponentChoice == ChoosingChoice.white) opponentCheck,
+              ]),
               onPressed: () async {
                 final success = await onWantsChoosingChoice(
                   ChoosingChoice.white,
@@ -55,16 +56,10 @@ class ColorChooser extends StatelessWidget {
               width: 40,
             ),
             ElevatedButton.icon(
-              icon: wantsBlack > 0
-                  ? Row(
-                      children: List.filled(
-                          wantsBlack,
-                          const Icon(
-                            Icons.check,
-                            color: Colors.green,
-                          )),
-                    )
-                  : null,
+              icon: Row(children: [
+                if (creatorChoice == ChoosingChoice.black) creatorCheck,
+                if (opponentChoice == ChoosingChoice.black) opponentCheck,
+              ]),
               onPressed: () async {
                 final success = await onWantsChoosingChoice(
                   ChoosingChoice.black,
@@ -86,16 +81,10 @@ class ColorChooser extends StatelessWidget {
           ),
         ),
         ElevatedButton.icon(
-          icon: wantsCoinFlip > 0
-              ? Row(
-                  children: List.filled(
-                      wantsCoinFlip,
-                      const Icon(
-                        Icons.check,
-                        color: Colors.green,
-                      )),
-                )
-              : null,
+          icon: Row(children: [
+            if (creatorChoice == ChoosingChoice.coinflip) creatorCheck,
+            if (opponentChoice == ChoosingChoice.coinflip) opponentCheck,
+          ]),
           onPressed: () async {
             final success = await onWantsChoosingChoice(
               ChoosingChoice.coinflip,

@@ -34,19 +34,24 @@ class _GamesListState extends State<GamesList> {
 
   Future<DocumentReference<Map<String, dynamic>>> joinGame(
       QueryDocumentSnapshot<Map<String, dynamic>> game) async {
-    if (game.data()['opponent'] != null) {
+    final gameData = game.data();
+    if (gameData['opponent'] != null) {
       return game.reference;
     }
-    final userDocRef = _firestore
-        .collection('users')
-        .doc(FirebaseAuth.instance.currentUser!.uid);
-    final userDoc = await queryCache(userDocRef);
-    final username = userDoc.get('username') as String;
+    // final userDocRef = _firestore
+    //     .collection('users')
+    //     .doc(FirebaseAuth.instance.currentUser!.uid);
+    // final userDoc = await queryCache(userDocRef);
+    final username = widget.userDoc.get('username') as String;
+    if (gameData['creator'] == username) {
+      return game.reference;
+    }
     final transactionResult = _firestore.runTransaction((transaction) async {
       final gameDoc = await transaction.get(game.reference);
       if (gameDoc.data()!['opponent'] == null) {
         return transaction
-            .update(game.reference, {'opponent': username}).update(userDocRef, {
+            .update(game.reference, {'opponent': username}).update(
+                widget.userDoc.reference, {
           'games': FieldValue.arrayUnion([game.id]),
         });
       } else {
@@ -64,6 +69,7 @@ class _GamesListState extends State<GamesList> {
 
   @override
   Widget build(BuildContext context) {
+    stream ??= widget.stream();
     final theme = Theme.of(context);
 
     return Expanded(
@@ -92,7 +98,8 @@ class _GamesListState extends State<GamesList> {
                     if (snapshot.hasError) {
                       return Text('error ${snapshot.error}');
                     }
-                    final games =
+                    final List<QueryDocumentSnapshot<Map<String, Object?>>>
+                        games =
                         snapshot.hasData ? snapshot.requireData.docs : [];
                     if (games.isEmpty) {
                       return RefreshIndicator(

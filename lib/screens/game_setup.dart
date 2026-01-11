@@ -1,9 +1,10 @@
-import 'package:chesster/help/cache_query.dart';
+import 'dart:math';
+
 import 'package:chesster/models/chess.dart';
 import 'package:chesster/widgets/chess_color_chooser.dart';
 import 'package:chesster/widgets/chessboard.dart';
+import 'package:chesster/widgets/chesspiece.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 final _firestore = FirebaseFirestore.instance;
@@ -25,45 +26,64 @@ class ChessSetupScreen extends StatefulWidget {
 class _ChessSetupScreenState extends State<ChessSetupScreen> {
   late final Future<void> gameFuture;
   late final Stream<DocumentSnapshot> gameStream;
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> piecesStream;
   late ChessGame game;
   late final bool userIsCreator;
-  bool setupComplete = false;
+  // late final Map<int, ChessPiecePic> piecesMap;
+  ChessColor turnColor = ChessColor.white;
+  late final ChessColor userColor;
+
+  // void move() {
+  //   setState(() {
+  //     turnColor =
+  //         turnColor == ChessColor.white ? ChessColor.black : ChessColor.white;
+  //   });
+  // }
 
   Future<void> getGame() async {
     final gameDoc = await widget.gameRef.get();
-    final piecesCollection = await widget.gameRef.collection('pieces').get();
-    final pieces = {
-      for (final x in piecesCollection.docs) int.parse(x.id): x.data()
-    };
+    // final piecesCollection = await widget.gameRef.collection('pieces').get();
+    // piecesMap = {
+    //   for (final x in piecesCollection.docs)
+    //     int.parse(x.id): ChessPiecePic(
+    //       piece: Piece.fromJson(x.data(), x.id),
+    //     )
+    // };
+    final data = gameDoc.data();
     game = ChessGame.fromJson(gameDoc.data()!);
     userIsCreator = game.creator == (widget.userDoc.get('username') as String);
-    game.setIndexesMap(pieces);
-    if (game.creatorIsWhite != null) {
-      setState(() {
-        setupComplete = true;
-      });
-    }
   }
 
-  Future<bool> wantsChoosingChoice(ChoosingChoice choice) async {
+  Future<bool> wantsChoosingChoice(ChoosingChoice? choice) async {
+    if ((userIsCreator ? game.creatorChoice : game.opponentChoice) == choice) {
+      choice = null;
+    }
+    final (cChoice, oChoice) = userIsCreator
+        ? (choice, game.opponentChoice)
+        : (game.creatorChoice, choice);
+    final update = <String, Object?>{};
+    if ({cChoice, oChoice}
+        .containsAll([ChoosingChoice.white, ChoosingChoice.black])) {
+      update['creatorIsWhite'] = cChoice == ChoosingChoice.white;
+    } else if (cChoice == ChoosingChoice.coinflip &&
+        oChoice == ChoosingChoice.coinflip) {
+      final creatorIsWhite = Random().nextBool();
+      update['creatorIsWhite'] = creatorIsWhite;
+    }
+    final choiceField = userIsCreator ? 'creatorChoice' : 'opponentChoice';
+    final newChoiceIndex =
+        choice == null ? null : ChoosingChoice.values.indexOf(choice);
     try {
-      final choiceField = userIsCreator ? 'creatorChoice' : 'opponentChoice';
       await _firestore.runTransaction((transaction) async {
         final gameDoc = await transaction.get(widget.gameRef);
-        final Map<String, Object?> update = {};
         if (gameDoc.get('creatorIsWhite') == null) {
-          final prevChoiceIndex = gameDoc.get(choiceField);
-          final newChoiceIndex = ChoosingChoice.values.indexOf(choice);
-          if (prevChoiceIndex == newChoiceIndex) return;
-          update[choiceField] = newChoiceIndex;
-          if (prevChoiceIndex != null) {
-            final prevChoice = ChoosingChoice.values[prevChoiceIndex as int];
-            update[prevChoice.name] = FieldValue.increment(-1);
-          }
-          update[choice.name] = FieldValue.increment(1);
-          transaction.update(widget.gameRef, update);
+          transaction.update(
+            widget.gameRef,
+            {choiceField: newChoiceIndex, ...update},
+          );
         }
       });
+      // game.setInitialPieces();
     } on FirebaseException catch (error) {
       print(error);
       return false;
@@ -75,6 +95,8 @@ class _ChessSetupScreenState extends State<ChessSetupScreen> {
   void initState() {
     super.initState();
     gameFuture = getGame();
+    gameStream = widget.gameRef.snapshots();
+    piecesStream = widget.gameRef.collection('pieces').snapshots();
   }
 
   @override
@@ -101,8 +123,12 @@ class _ChessSetupScreenState extends State<ChessSetupScreen> {
                   child: Text(snapshot.error.toString()),
                 );
               }
-              // print(snapshot.requireData);
-              gameStream = widget.gameRef.snapshots();
+            // print(snapshot.requireData);
+          }
+          if (game.creatorIsWhite != null) {
+            userColor = userIsCreator
+                ? (game.creatorIsWhite! ? ChessColor.white : ChessColor.black)
+                : (game.creatorIsWhite! ? ChessColor.black : ChessColor.white);
           }
           return StreamBuilder(
             stream: gameStream,
@@ -111,8 +137,11 @@ class _ChessSetupScreenState extends State<ChessSetupScreen> {
                 return const Text('Something went wrong');
               }
               if (snapshot.hasData) {
-                game = ChessGame.fromJson(
-                    snapshot.requireData.data() as Map<String, Object?>);
+                final json =
+                    snapshot.requireData.data() as Map<String, Object?>;
+                game = ChessGame.fromJson(json);
+                turnColor =
+                    game.turn % 2 == 0 ? ChessColor.white : ChessColor.black;
               }
               switch (snapshot.connectionState) {
                 case ConnectionState.none:
@@ -137,12 +166,28 @@ class _ChessSetupScreenState extends State<ChessSetupScreen> {
                         Expanded(
                           flex: 3,
                           child: Center(
-                            child: setupComplete
-                                ? Chessboard(game: game)
+                            child: game.creatorIsWhite != null
+                                ? Column(
+                                    children: [
+                                      Text('Turn: ${game.turnColor.name}'),
+                                      Expanded(
+                                        child: Chessboard(
+                                          game: game,
+                                          // onMove: move,
+                                          turnColor: turnColor,
+                                          // piecesMap: piecesMap,
+                                          gameRef: widget.gameRef,
+                                          userDoc: widget.userDoc,
+                                          userColor: userColor,
+                                          piecesStream: piecesStream,
+                                        ),
+                                      ),
+                                      Text('Your color: ${userColor.name}')
+                                    ],
+                                  )
                                 : ColorChooser(
-                                    wantsBlack: game.wantsBlack,
-                                    wantsWhite: game.wantsWhite,
-                                    wantsCoinFlip: game.wantsCoinFlip,
+                                    creatorChoice: game.creatorChoice,
+                                    opponentChoice: game.opponentChoice,
                                     onWantsChoosingChoice: wantsChoosingChoice,
                                   ),
                           ),
